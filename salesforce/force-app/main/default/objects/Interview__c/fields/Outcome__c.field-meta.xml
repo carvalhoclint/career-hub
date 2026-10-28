@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Outcome__c</fullName>
+    <description>Result of the interview, separate from its scheduling status.</description>
+    <label>Outcome</label>
+    <required>false</required>
+    <trackHistory>true</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Awaiting Feedback</fullName>
+                <default>false</default>
+                <label>Awaiting Feedback</label>
+            </value>
+            <value>
+                <fullName>Moving Forward</fullName>
+                <default>false</default>
+                <label>Moving Forward</label>
+            </value>
+            <value>
+                <fullName>Not Moving Forward</fullName>
+                <default>false</default>
+                <label>Not Moving Forward</label>
+            </value>
+            <value>
+                <fullName>Withdrawn</fullName>
+                <default>false</default>
+                <label>Withdrawn</label>
+            </value>
+            <value>
+                <fullName>No Decision</fullName>
+                <default>false</default>
+                <label>No Decision</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

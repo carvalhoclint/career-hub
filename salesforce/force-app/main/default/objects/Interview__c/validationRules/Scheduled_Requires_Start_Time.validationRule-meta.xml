@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Scheduled_Requires_Start_Time</fullName>
+    <active>true</active>
+    <errorConditionFormula>AND(
+    ISPICKVAL(Status__c, &quot;Scheduled&quot;),
+    ISBLANK(Start_Time__c)
+)</errorConditionFormula>
+    <errorDisplayField>Start_Time__c</errorDisplayField>
+    <errorMessage>Enter a Start Time before marking this interview Scheduled.</errorMessage>
+</ValidationRule>

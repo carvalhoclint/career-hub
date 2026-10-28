@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Completed_At_Not_In_Future</fullName>
+    <active>true</active>
+    <errorConditionFormula>AND(
+    NOT(ISBLANK(Completed_At__c)),
+    Completed_At__c &gt; NOW()
+)</errorConditionFormula>
+    <errorDisplayField>Completed_At__c</errorDisplayField>
+    <errorMessage>Completed At cannot be in the future.</errorMessage>
+</ValidationRule>

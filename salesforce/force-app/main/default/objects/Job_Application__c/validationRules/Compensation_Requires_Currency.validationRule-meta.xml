@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Compensation_Requires_Currency</fullName>
+    <active>true</active>
+    <errorConditionFormula>AND(
+    OR(
+        NOT(ISBLANK(Compensation_Minimum__c)),
+        NOT(ISBLANK(Compensation_Maximum__c))
+    ),
+    OR(
+        ISBLANK(TEXT(Compensation_Currency__c)),
+        ISPICKVAL(Compensation_Currency__c, &quot;Not Specified&quot;)
+    )
+)</errorConditionFormula>
+    <errorDisplayField>Compensation_Currency__c</errorDisplayField>
+    <errorMessage>Select a Compensation Currency when entering compensation.</errorMessage>
+</ValidationRule>

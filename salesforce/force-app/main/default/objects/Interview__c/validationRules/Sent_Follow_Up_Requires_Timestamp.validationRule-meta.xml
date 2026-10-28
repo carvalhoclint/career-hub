@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Sent_Follow_Up_Requires_Timestamp</fullName>
+    <active>true</active>
+    <errorConditionFormula>AND(
+    ISPICKVAL(Follow_Up_Status__c, &quot;Sent&quot;),
+    ISBLANK(Follow_Up_Sent_At__c)
+)</errorConditionFormula>
+    <errorDisplayField>Follow_Up_Sent_At__c</errorDisplayField>
+    <errorMessage>Enter Follow-Up Sent At when the follow-up status is Sent.</errorMessage>
+</ValidationRule>
