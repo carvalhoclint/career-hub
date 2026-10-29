@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>68.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
+    <assignments>
+        <name>Flag_Application_for_Review</name>
+        <label>Flag Application for Review</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <assignmentItems>
+            <assignToReference>$Record.Review_Status__c</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>Needs Review</stringValue>
+            </value>
+        </assignmentItems>
+    </assignments>
+    <decisions>
+        <name>Requires_Review</name>
+        <label>Requires Review</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <defaultConnectorLabel>Default Outcome</defaultConnectorLabel>
+        <rules>
+            <name>Flag_for_Review</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>HasQualityIssues</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue>
+                    <booleanValue>true</booleanValue>
+                </rightValue>
+            </conditions>
+            <conditions>
+                <leftValueReference>$Record.Review_Status__c</leftValueReference>
+                <operator>NotEqualTo</operator>
+                <rightValue>
+                    <stringValue>In Review</stringValue>
+                </rightValue>
+            </conditions>
+            <connector>
+                <targetReference>Flag_Application_for_Review</targetReference>
+            </connector>
+            <label>Flag for Review</label>
+        </rules>
+    </decisions>
+    <environments>Default</environments>
+    <formulas>
+        <name>HasQualityIssues</name>
+        <dataType>Boolean</dataType>
+        <expression>OR(
+    ISBLANK({!$Record.Employer__c}),
+    ISBLANK(TEXT({!$Record.Job_Source__c})),
+    AND(
+        ISPICKVAL({!$Record.Stage__c}, &quot;Applied&quot;),
+        ISBLANK({!$Record.Applied_Date__c})
+    ),
+    AND(
+        OR(
+            ISPICKVAL({!$Record.Stage__c}, &quot;Recruiter Screening&quot;),
+            ISPICKVAL({!$Record.Stage__c}, &quot;Interviewing&quot;),
+            ISPICKVAL({!$Record.Stage__c}, &quot;Offer&quot;)
+        ),
+        ISBLANK({!$Record.Primary_Recruiter__c})
+    ),
+    AND(
+        OR(
+            ISPICKVAL({!$Record.Stage__c}, &quot;Applied&quot;),
+            ISPICKVAL({!$Record.Stage__c}, &quot;Recruiter Screening&quot;),
+            ISPICKVAL({!$Record.Stage__c}, &quot;Interviewing&quot;),
+            ISPICKVAL({!$Record.Stage__c}, &quot;Offer&quot;)
+        ),
+        ISBLANK({!$Record.Next_Follow_Up_Date__c})
+    )
+)</expression>
+    </formulas>
+    <interviewLabel>Career Hub Application Review {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Career Hub Application Review</label>
+    <processMetadataValues>
+        <name>BuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value>
+            <stringValue>AUTO_LAYOUT_CANVAS</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>OriginBuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Requires_Review</targetReference>
+        </connector>
+        <object>Job_Application__c</object>
+        <recordTriggerType>CreateAndUpdate</recordTriggerType>
+        <triggerType>RecordBeforeSave</triggerType>
+    </start>
+    <status>Active</status>
+</Flow>

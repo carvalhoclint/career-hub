@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Data_Quality_Issues__c</fullName>
+    <description>Automatically identifies missing information requiring operational review.</description>
+    <externalId>false</externalId>
+    <formula>IF(
+    ISBLANK(Employer__c),
+    &quot;Missing employer. &quot;,
+    &quot;&quot;
+) &amp;
+IF(
+    ISBLANK(TEXT(Job_Source__c)),
+    &quot;Missing job source. &quot;,
+    &quot;&quot;
+) &amp;
+IF(
+    AND(
+        ISPICKVAL(Stage__c, &quot;Applied&quot;),
+        ISBLANK(Applied_Date__c)
+    ),
+    &quot;Missing applied date. &quot;,
+    &quot;&quot;
+) &amp;
+IF(
+    AND(
+        OR(
+            ISPICKVAL(Stage__c, &quot;Recruiter Screening&quot;),
+            ISPICKVAL(Stage__c, &quot;Interviewing&quot;),
+            ISPICKVAL(Stage__c, &quot;Offer&quot;)
+        ),
+        ISBLANK(Primary_Recruiter__c)
+    ),
+    &quot;Missing primary contact. &quot;,
+    &quot;&quot;
+) &amp;
+IF(
+    AND(
+        OR(
+            ISPICKVAL(Stage__c, &quot;Applied&quot;),
+            ISPICKVAL(Stage__c, &quot;Recruiter Screening&quot;),
+            ISPICKVAL(Stage__c, &quot;Interviewing&quot;),
+            ISPICKVAL(Stage__c, &quot;Offer&quot;)
+        ),
+        ISBLANK(Next_Follow_Up_Date__c)
+    ),
+    &quot;Missing next follow-up date. &quot;,
+    &quot;&quot;
+)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>Data Quality Issues</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>
