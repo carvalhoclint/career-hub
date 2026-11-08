@@ -6,6 +6,11 @@
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class CareerHubJobPostingPreview {
+    private static final Pattern LINKEDIN_JOB_URL = Pattern.compile(
+        '(?i)^https://(?:(?:www|[a-z]{2})\\.)?linkedin\\.com/jobs/view/' +
+        '(?:[^/?#\\s]+-)?([0-9]+)/?(?:[?#][^\\s]*)?$'
+    );
+
     public class Request {
         @InvocableVariable(required=true)
         public String postingUrl;
@@ -49,7 +54,19 @@ public with sharing class CareerHubJobPostingPreview {
 String board;
 Set<String> urls = new Set<String>{ original };
 
-if (isGreenhouse) {
+Matcher linkedInLink = LINKEDIN_JOB_URL.matcher(original);
+Boolean isLinkedIn = linkedInLink.matches();
+
+if (isLinkedIn) {
+    String jobId = linkedInLink.group(1);
+    String path = '/jobs/view/' + jobId;
+    result.sourceJobKey = 'linkedin:' + jobId;
+    result.canonicalUrl = 'https://www.linkedin.com' + path;
+    // Also match records saved with the short URL before LinkedIn support.
+    urls.add(result.canonicalUrl + '/');
+    urls.add('https://linkedin.com' + path);
+    urls.add('https://linkedin.com' + path + '/');
+} else if (isGreenhouse) {
     board = link.group(1).toLowerCase();
     String path = '/' + board + '/jobs/' + link.group(2);
     result.sourceJobKey = 'greenhouse:' + board + ':' + link.group(2);
@@ -102,6 +119,12 @@ urls.add(result.canonicalUrl);
             result.status = 'DUPLICATE';
             result.message = 'This posting is already in Career Hub.';
             result.existingApplicationId = matches[0].Id;
+            return;
+        }
+        if (isLinkedIn) {
+            result.status = 'MANUAL';
+            result.message = 'Open the LinkedIn posting and enter its job details below. ' +
+                'If the employer uses Greenhouse or Lever, you can go back and use that link to prefill the details.';
             return;
         }
         if (isLever) {

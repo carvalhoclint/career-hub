@@ -13,6 +13,10 @@ private class CareerHubJobPostingPreviewTest {
     private static final String LEVER_URL =
         'https://jobs.lever.co/careerhubdemo/e77f0dec-7249-46d2-8542-e192acc79be4';
 
+    private static final String LINKEDIN_URL = 'https://www.linkedin.com/jobs/view/1234567890';
+    private static final String LINKEDIN_VARIANT =
+        'https://ca.linkedin.com/jobs/view/revenue-operations-analyst-1234567890/?trackingId=test';
+
     private class PostingMock implements HttpCalloutMock {
         public HttpResponse respond(HttpRequest request) {
             String endpoint = request.getEndpoint();
@@ -93,6 +97,49 @@ private class CareerHubJobPostingPreviewTest {
         System.assertEquals('MANUAL', result.status, result.message);
         System.assertEquals(url, result.canonicalUrl);
         System.assert(String.isNotBlank(result.sourceJobKey));
+    }
+
+    @IsTest
+    static void linkedInVariantsShareCanonicalUrlAndJobKey() {
+        Test.startTest();
+        CareerHubJobPostingPreview.Result direct = preview(LINKEDIN_URL);
+        CareerHubJobPostingPreview.Result shared = preview(LINKEDIN_VARIANT);
+        System.assertEquals(0, Limits.getCallouts(), 'LinkedIn previews must not fetch the posting.');
+        Test.stopTest();
+
+        System.assertEquals('MANUAL', direct.status, direct.message);
+        System.assertEquals('MANUAL', shared.status, shared.message);
+        System.assertEquals(LINKEDIN_URL, direct.canonicalUrl);
+        System.assertEquals(LINKEDIN_URL, shared.canonicalUrl);
+        System.assertEquals('linkedin:1234567890', direct.sourceJobKey);
+        System.assertEquals(direct.sourceJobKey, shared.sourceJobKey);
+    }
+
+    @IsTest
+    static void linkedInVariantFindsLegacyApplicationByPostingUrl() {
+        Account employer = new Account(Name = 'Career Hub LinkedIn Test Employer');
+        insert employer;
+
+        Job_Application__c application = new Job_Application__c(
+            Employer__c = employer.Id,
+            Job_Title__c = 'Revenue Operations Analyst',
+            Job_Description__c = 'Build pipeline reports.',
+            Stage__c = 'Discovered',
+            Job_Source__c = 'LinkedIn',
+            Posting_URL__c = LINKEDIN_URL + '/',
+            Source_Job_Key__c = 'url:' + EncodingUtil.convertToHex(
+                Crypto.generateDigest('SHA-256', Blob.valueOf(LINKEDIN_URL + '/'))
+            )
+        );
+        insert application;
+
+        Test.startTest();
+        CareerHubJobPostingPreview.Result result = preview(LINKEDIN_VARIANT);
+        System.assertEquals(0, Limits.getCallouts(), 'Duplicate previews must not make a callout.');
+        Test.stopTest();
+
+        System.assertEquals('DUPLICATE', result.status, result.message);
+        System.assertEquals(application.Id, result.existingApplicationId);
     }
 
     @IsTest
