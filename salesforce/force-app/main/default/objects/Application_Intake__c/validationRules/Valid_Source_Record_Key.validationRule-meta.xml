@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Valid_Source_Record_Key</fullName>
+    <active>true</active>
+    <errorConditionFormula>NOT(REGEX(Source_Record_Key__c, "^(gmail:[0-9a-f]{1,64}|sheet:[0-9a-f]{64})$"))</errorConditionFormula>
+    <errorMessage>Use a lowercase Gmail key (gmail: plus the message ID) or a spreadsheet key (sheet: plus a 64-character hex digest).</errorMessage>
+</ValidationRule>
