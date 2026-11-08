@@ -46,11 +46,6 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
-        <field>Job_Application__c.Stage__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
         <field>Application_Intake__c.Applied_Date__c</field>
         <readable>true</readable>
     </fieldPermissions>
