@@ -112,6 +112,21 @@
         <picklistObject>Job_Application__c</picklistObject>
     </dynamicChoiceSets>
     <environments>Default</environments>
+    <formulas>
+        <name>Existing_Application_Id</name>
+        <dataType>String</dataType>
+        <expression>IF(ISBLANK({!Preview_Job_Posting.existingApplicationId}), {!Find_Existing_Application.Id}, {!Preview_Job_Posting.existingApplicationId})</expression>
+    </formulas>
+    <formulas>
+        <name>Is_LinkedIn_Posting</name>
+        <dataType>Boolean</dataType>
+        <expression>BEGINS({!Preview_Job_Posting.sourceJobKey}, &quot;linkedin:&quot;)</expression>
+    </formulas>
+    <formulas>
+        <name>Resolved_Job_Source</name>
+        <dataType>String</dataType>
+        <expression>IF({!Is_LinkedIn_Posting}, &quot;LinkedIn&quot;, {!Job_Source_Input})</expression>
+    </formulas>
     <interviewLabel>Career Hub – Import Job from URL {!$Flow.CurrentDateTime}</interviewLabel>
     <label>Career Hub – Import Job from URL</label>
     <processMetadataValues>
@@ -153,7 +168,7 @@
         <inputAssignments>
             <field>Job_Source__c</field>
             <value>
-                <elementReference>Job_Source_Input</elementReference>
+                <elementReference>Resolved_Job_Source</elementReference>
             </value>
         </inputAssignments>
         <inputAssignments>
@@ -224,7 +239,7 @@
             <field>Id</field>
             <operator>EqualTo</operator>
             <value>
-                <elementReference>Preview_Job_Posting.existingApplicationId</elementReference>
+                <elementReference>Existing_Application_Id</elementReference>
             </value>
         </filters>
         <getFirstRecordOnly>true</getFirstRecordOnly>
@@ -331,6 +346,21 @@
                     <stringValue>12</stringValue>
                 </width>
             </styleProperties>
+        </fields>
+        <fields>
+            <name>LinkedIn_Posting_Link</name>
+            <fieldText>&lt;p&gt;&lt;a href=&quot;{!Preview_Job_Posting.canonicalUrl}&quot; rel=&quot;noopener noreferrer&quot; target=&quot;_blank&quot;&gt;Open LinkedIn posting&lt;/a&gt;&lt;/p&gt;</fieldText>
+            <fieldType>DisplayText</fieldType>
+            <visibilityRule>
+                <conditionLogic>and</conditionLogic>
+                <conditions>
+                    <leftValueReference>Is_LinkedIn_Posting</leftValueReference>
+                    <operator>EqualTo</operator>
+                    <rightValue>
+                        <booleanValue>true</booleanValue>
+                    </rightValue>
+                </conditions>
+            </visibilityRule>
         </fields>
         <fields>
             <name>Review_Job_Title</name>
