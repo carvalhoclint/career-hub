@@ -20,7 +20,10 @@
                 onchange={handleToggle} disabled={busy}></lightning-input>
             <lightning-button class="slds-m-top_small" label="Refresh Queue" onclick={refreshQueue}
                 disabled={busy}></lightning-button>
-            <template lwc:if={queueError}>
+            <template lwc:if={loadingQueue}>
+                <p class="slds-m-vertical_small" role="status">Loading intake records…</p>
+            </template>
+            <template lwc:elseif={queueError}>
                 <p class="slds-text-color_error slds-m-vertical_small" role="alert">{queueError}</p>
             </template>
             <template lwc:elseif={hasRows}>

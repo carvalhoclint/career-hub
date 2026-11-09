@@ -1,5 +1,4 @@
-import { LightningElement, wire } from 'lwc';
-import { refreshApex } from '@salesforce/apex';
+import { LightningElement } from 'lwc';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import APPLICATION_INTAKE from '@salesforce/schema/Application_Intake__c';
 import SOURCE_RECORD_KEY from '@salesforce/schema/Application_Intake__c.Source_Record_Key__c';
@@ -21,26 +20,14 @@ export default class CareerHubIntakeQueue extends LightningElement {
     rows = [];
     queueError;
     actionError;
-    queueWire;
+    queueRequest = 0;
+    loadingQueue = false;
     selectedId;
     employerId;
     busy = false;
 
-    @wire(getQueue, { showCompleted: '$showCompleted' })
-    wiredQueue(result) {
-        this.queueWire = result;
-        if (result.data) {
-            this.rows = result.data.map((row) => ({
-                ...row,
-                applicationUrl: row.Job_Application__c
-                    ? '/lightning/r/Job_Application__c/' + row.Job_Application__c + '/view'
-                    : null
-            }));
-            this.queueError = undefined;
-        } else if (result.error) {
-            this.rows = [];
-            this.queueError = this.message(result.error);
-        }
+    connectedCallback() {
+        this.refreshQueue();
     }
 
     get hasRows() {
@@ -75,6 +62,7 @@ export default class CareerHubIntakeQueue extends LightningElement {
         this.actionError = undefined;
         this.rows = [];
         this.showCompleted = event.target.checked;
+        this.refreshQueue();
     }
 
     handleSelect(event) {
@@ -112,15 +100,34 @@ export default class CareerHubIntakeQueue extends LightningElement {
     }
 
     async refreshQueue() {
+        const request = ++this.queueRequest;
+        this.loadingQueue = true;
+        this.queueError = undefined;
         try {
-            if (this.queueWire) await refreshApex(this.queueWire);
+            const data = await getQueue({ showCompleted: this.showCompleted });
+            if (request !== this.queueRequest) return;
+            this.rows = data.map((row) => ({
+                ...row,
+                applicationUrl: row.Job_Application__c
+                    ? '/lightning/r/Job_Application__c/' + row.Job_Application__c + '/view'
+                    : null
+            }));
         } catch (error) {
-            this.queueError = this.message(error);
+            if (request !== this.queueRequest) return;
+            this.rows = [];
+            this.queueError = this.message(error, 'Could not load the intake queue. Try Refresh Queue again.');
+        } finally {
+            if (request === this.queueRequest) this.loadingQueue = false;
         }
     }
 
-    message(error) {
-        return error?.body?.message || error?.message || 'An unexpected error occurred.';
+    message(error, fallback = 'An unexpected error occurred.') {
+        try {
+            return error?.body?.message || error?.message || fallback;
+        } catch {
+            // Some errors are wrapped by Lightning and their properties cannot be read.
+            return fallback;
+        }
     }
 
     toast(title, message, variant) {

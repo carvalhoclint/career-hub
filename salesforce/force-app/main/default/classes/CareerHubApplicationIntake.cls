@@ -1,5 +1,5 @@
 public with sharing class CareerHubApplicationIntake {
-    @AuraEnabled(cacheable=true)
+    @AuraEnabled
     public static List<Application_Intake__c> getQueue(Boolean showCompleted) {
         Set<String> statuses = showCompleted == true
             ? new Set<String>{ 'Imported', 'Duplicate' }
