@@ -4,6 +4,10 @@
         <apexClass>CareerHubApplicationIntake</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>CareerHubAgentStageIntake</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <fieldPermissions>
         <editable>true</editable>
         <field>Application_Intake__c.Status__c</field>
