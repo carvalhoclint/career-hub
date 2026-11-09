@@ -179,4 +179,29 @@ private class CareerHubAgentStageIntakeTest {
             System.assertEquals(String.valueOf(job.Id), existing.existingApplicationId);
         }
     }
+
+    @IsTest
+    static void stagesAgentforceMarkdownLinkWithSameKeyAsPlainUrl() {
+        System.runAs(reviewer()) {
+            String url = 'https://job-boards.greenhouse.io/unitriteam/jobs/4485031009';
+            CareerHubAgentStageIntake.Draft input = draft('Auto', 'Unknown', 'Unknown');
+            input.postingUrl = '[' + url + '](' + url + '1)';
+            List<CareerHubAgentStageIntake.Draft> request = new List<CareerHubAgentStageIntake.Draft>{ input };
+            System.assertEquals('INVALID', CareerHubAgentStageIntake.stage(request)[0].outcome);
+
+            input.postingUrl = '[' + url + '](' + url + ')';
+            CareerHubAgentStageIntake.Result staged = CareerHubAgentStageIntake.stage(request)[0];
+            System.assertEquals('STAGED', staged.outcome, staged.detail);
+            Id intakeId = (Id) staged.intakeId;
+            Application_Intake__c item = [
+                SELECT Posting_URL__c, Source_Record_Key__c FROM Application_Intake__c
+                WHERE Id = :intakeId
+            ];
+            System.assertEquals(url, item.Posting_URL__c);
+            System.assertEquals('greenhouse:unitriteam:4485031009', item.Source_Record_Key__c);
+
+            input.postingUrl = url;
+            System.assertEquals('ALREADY_STAGED', CareerHubAgentStageIntake.stage(request)[0].outcome);
+        }
+    }
 }
