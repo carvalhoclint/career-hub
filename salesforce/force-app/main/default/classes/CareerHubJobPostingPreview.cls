@@ -147,6 +147,18 @@ public with sharing class CareerHubJobPostingPreview {
     // Shared with intake staging so a posting gets the same key in both paths.
     public static Set<String> identify(String postingUrl, Result result) {
         String original = String.isBlank(postingUrl) ? '' : postingUrl.trim();
+        // Agentforce can send a URL as a Markdown link whose label is the URL itself.
+        // Unwrap only an exact match so the saved URL is the one shown to the user.
+        if (original.startsWith('[') && original.endsWith(')')) {
+            Integer delimiter = original.indexOf('](');
+            if (delimiter > 1) {
+                String label = original.substring(1, delimiter);
+                String destination = original.substring(delimiter + 2, original.length() - 1);
+                if (label.equals(destination)) {
+                    original = destination;
+                }
+            }
+        }
         Matcher link = GREENHOUSE_JOB_URL.matcher(original);
 
         Boolean isGreenhouse = link.matches();
