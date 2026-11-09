@@ -2,6 +2,13 @@
 <ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Valid_Source_Record_Key</fullName>
     <active>true</active>
-    <errorConditionFormula>NOT(REGEX(Source_Record_Key__c, "^(gmail:[0-9a-f]{1,64}|sheet:[0-9a-f]{64})$"))</errorConditionFormula>
-    <errorMessage>Use a lowercase Gmail key (gmail: plus the message ID) or a spreadsheet key (sheet: plus a 64-character hex digest).</errorMessage>
+    <errorConditionFormula>IF(
+        ISBLANK(Posting_URL__c),
+        NOT(REGEX(Source_Record_Key__c, "^(gmail:[0-9a-f]{1,64}|(sheet|email):[0-9a-f]{64})$")),
+        OR(
+            NOT(BEGINS(Posting_URL__c, "https://")),
+            NOT(REGEX(Source_Record_Key__c, "^(linkedin:[0-9]+|greenhouse:[a-z0-9_-]+:[0-9]+|url:[0-9a-f]{64})$"))
+        )
+    )</errorConditionFormula>
+    <errorMessage>Provide a valid source key for the email or HTTPS posting.</errorMessage>
 </ValidationRule>

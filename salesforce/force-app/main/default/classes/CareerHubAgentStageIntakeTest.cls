@@ -37,6 +37,7 @@ private class CareerHubAgentStageIntakeTest {
     private static CareerHubAgentStageIntake.Draft draft(String key, String stage, String dateText) {
         CareerHubAgentStageIntake.Draft input = new CareerHubAgentStageIntake.Draft();
         input.sourceKey = key;
+        input.postingUrl = 'None';
         input.employer = 'Synthetic Employer';
         input.jobTitle = 'Business Systems Analyst';
         input.sourceStage = stage;
@@ -108,6 +109,74 @@ private class CareerHubAgentStageIntakeTest {
             }
             System.assertEquals('STAGED', results[6].outcome);
             System.assertEquals(1, [SELECT COUNT() FROM Application_Intake__c]);
+        }
+    }
+
+    @IsTest
+    static void plainEmailStagesRecruitingDetailsAndBlocksReplay() {
+        System.runAs(reviewer()) {
+            CareerHubAgentStageIntake.Draft input = draft('Auto', 'Applied', '2026-09-01');
+            input.contactName = 'Alex Example';
+            input.contactEmail = 'alex@example.com';
+            input.contactPhone = '+1 (416) 555-0100';
+            List<CareerHubAgentStageIntake.Draft> request = new List<CareerHubAgentStageIntake.Draft>{ input };
+            System.assertEquals('STAGED', CareerHubAgentStageIntake.stage(request)[0].outcome);
+            input.employer = '  SYNTHETIC   EMPLOYER ';
+            System.assertEquals('ALREADY_STAGED', CareerHubAgentStageIntake.stage(request)[0].outcome);
+            Application_Intake__c item = [
+                SELECT Source_Record_Key__c, Recruiting_Contact_Name__c, Recruiting_Email__c, Recruiting_Phone__c
+                FROM Application_Intake__c
+            ];
+            System.assert(item.Source_Record_Key__c.startsWith('email:'));
+            System.assertEquals('Alex Example', item.Recruiting_Contact_Name__c);
+            System.assertEquals('alex@example.com', item.Recruiting_Email__c);
+            System.assertEquals('+1 (416) 555-0100', item.Recruiting_Phone__c);
+        }
+    }
+
+    @IsTest
+    static void linkPreviewAndReviewPreserveCanonicalUrlAndNeverMarkApplied() {
+        System.runAs(reviewer()) {
+            Account employer = new Account(Name = 'Synthetic Employer');
+            insert employer;
+            Contact recruiter = new Contact(LastName = 'Example', AccountId = employer.Id, Email = 'alex@example.com');
+            insert recruiter;
+            CareerHubAgentPreviewPosting.Request preview = new CareerHubAgentPreviewPosting.Request();
+            preview.postingUrl = 'https://ca.linkedin.com/jobs/view/business-analyst-1234567?tracking=test';
+            List<CareerHubAgentPreviewPosting.Request> links = new List<CareerHubAgentPreviewPosting.Request>{ preview };
+            CareerHubAgentPreviewPosting.Result beforeSave = CareerHubAgentPreviewPosting.preview(links)[0];
+            System.assertEquals('MANUAL', beforeSave.status);
+            System.assertEquals('https://www.linkedin.com/jobs/view/1234567', beforeSave.canonicalUrl);
+
+            CareerHubAgentStageIntake.Draft input = draft('Auto', 'Applied', '2026-09-01');
+            input.postingUrl = preview.postingUrl;
+            input.contactEmail = recruiter.Email;
+            List<CareerHubAgentStageIntake.Draft> request = new List<CareerHubAgentStageIntake.Draft>{ input };
+            System.assertEquals('INVALID', CareerHubAgentStageIntake.stage(request)[0].outcome);
+            input.sourceStage = 'Unknown';
+            input.appliedDate = 'Unknown';
+            CareerHubAgentStageIntake.Result staged = CareerHubAgentStageIntake.stage(request)[0];
+            System.assertEquals('STAGED', staged.outcome, staged.detail);
+            input.postingUrl = beforeSave.canonicalUrl;
+            System.assertEquals('ALREADY_STAGED', CareerHubAgentStageIntake.stage(request)[0].outcome);
+            System.assertEquals(0, [SELECT COUNT() FROM Job_Application__c]);
+            System.assertEquals('Imported', CareerHubApplicationIntake.review((Id) staged.intakeId, null));
+
+            Job_Application__c job = [
+                SELECT Id, Employer__c, Stage__c, Applied_Date__c, Posting_URL__c, Recruiting_Email__c,
+                    Primary_Recruiter__c, Job_Source__c
+                FROM Job_Application__c WHERE Source_Job_Key__c = 'linkedin:1234567'
+            ];
+            System.assertEquals('Discovered', job.Stage__c);
+            System.assertEquals(null, job.Applied_Date__c);
+            System.assertEquals(employer.Id, job.Employer__c);
+            System.assertEquals('LinkedIn', job.Job_Source__c);
+            System.assertEquals(beforeSave.canonicalUrl, job.Posting_URL__c);
+            System.assertEquals(recruiter.Email, job.Recruiting_Email__c);
+            System.assertEquals(recruiter.Id, job.Primary_Recruiter__c);
+            CareerHubAgentPreviewPosting.Result existing = CareerHubAgentPreviewPosting.preview(links)[0];
+            System.assertEquals('DUPLICATE', existing.status);
+            System.assertEquals(String.valueOf(job.Id), existing.existingApplicationId);
         }
     }
 }

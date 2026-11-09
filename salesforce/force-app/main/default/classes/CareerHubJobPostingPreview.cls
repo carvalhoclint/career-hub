@@ -11,6 +11,16 @@ public with sharing class CareerHubJobPostingPreview {
         '(?:[^/?#\\s]+-)?([0-9]+)/?(?:[?#][^\\s]*)?$'
     );
 
+    private static final Pattern GREENHOUSE_JOB_URL = Pattern.compile(
+        '(?i)^https://(?:job-boards|boards)\\.greenhouse\\.io/' +
+        '([a-z0-9_-]+)/jobs/([0-9]+)/?(?:[?#][^\\s]*)?$'
+    );
+    private static final Pattern LEVER_JOB_URL = Pattern.compile(
+        '(?i)^https://jobs\\.lever\\.co/([a-z0-9_-]+)/' +
+        '([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})' +
+        '(?:/apply)?/?(?:\\?.*)?$'
+    );
+
     public class Request {
         @InvocableVariable(required=true)
         public String postingUrl;
@@ -44,70 +54,14 @@ public with sharing class CareerHubJobPostingPreview {
     }
 
     private static void previewOne(Request input, Result result) {
-        String original = input.postingUrl == null ? '' : input.postingUrl.trim();
-        Matcher link = Pattern.compile(
-            '(?i)^https://(?:job-boards|boards)\\.greenhouse\\.io/' +
-            '([a-z0-9_-]+)/jobs/([0-9]+)/?(?:[?#][^\\s]*)?$'
-        ).matcher(original);
-
-       Boolean isGreenhouse = link.matches();
-String board;
-Set<String> urls = new Set<String>{ original };
-
-Matcher linkedInLink = LINKEDIN_JOB_URL.matcher(original);
-Boolean isLinkedIn = linkedInLink.matches();
-
-if (isLinkedIn) {
-    String jobId = linkedInLink.group(1);
-    String path = '/jobs/view/' + jobId;
-    result.sourceJobKey = 'linkedin:' + jobId;
-    result.canonicalUrl = 'https://www.linkedin.com' + path;
-    // Also match records saved with the short URL before LinkedIn support.
-    urls.add(result.canonicalUrl + '/');
-    urls.add('https://linkedin.com' + path);
-    urls.add('https://linkedin.com' + path + '/');
-} else if (isGreenhouse) {
-    board = link.group(1).toLowerCase();
-    String path = '/' + board + '/jobs/' + link.group(2);
-    result.sourceJobKey = 'greenhouse:' + board + ':' + link.group(2);
-    result.canonicalUrl = 'https://job-boards.greenhouse.io' + path;
-    urls.add('https://boards.greenhouse.io' + path);
-} else {
-    Matcher webLink = Pattern.compile(
-        '(?i)^https://([a-z0-9.-]+\\.[a-z]{2,})(?::443)?([/?][^\\s#]*)?(?:#[^\\s]*)?$'
-    ).matcher(original);
-
-    if (!webLink.matches()) {
-        result.status = 'UNSUPPORTED';
-        result.message = 'Enter a complete HTTPS job posting link.';
-        return;
-    }
-
-    String pathAndQuery = webLink.group(2);
-    result.canonicalUrl = 'https://' + webLink.group(1).toLowerCase() +
-        (pathAndQuery == null ? '' : pathAndQuery);
-    result.sourceJobKey = 'url:' + EncodingUtil.convertToHex(
-        Crypto.generateDigest('SHA-256', Blob.valueOf(result.canonicalUrl))
-    );
-}
-
-Matcher leverLink = Pattern.compile(
-    '(?i)^https://jobs\\.lever\\.co/([a-z0-9_-]+)/' +
-    '([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})' +
-    '(?:/apply)?/?(?:\\?.*)?$'
-).matcher(result.canonicalUrl);
-
-Boolean isLever = !isGreenhouse && leverLink.matches();
-
-if (isLever) {
-    result.canonicalUrl = 'https://jobs.lever.co/' +
-        leverLink.group(1).toLowerCase() + '/' +
-        leverLink.group(2).toLowerCase();
-    result.sourceJobKey = 'url:' + EncodingUtil.convertToHex(
-        Crypto.generateDigest('SHA-256', Blob.valueOf(result.canonicalUrl))
-    );
-}
-urls.add(result.canonicalUrl);
+        Set<String> urls = identify(input.postingUrl, result);
+        if (result.status == 'UNSUPPORTED') return;
+        Matcher link = GREENHOUSE_JOB_URL.matcher(result.canonicalUrl);
+        Boolean isGreenhouse = link.matches();
+        String board = isGreenhouse ? link.group(1).toLowerCase() : null;
+        Matcher leverLink = LEVER_JOB_URL.matcher(result.canonicalUrl);
+        Boolean isLever = leverLink.matches();
+        Boolean isLinkedIn = result.sourceJobKey.startsWith('linkedin:');
         List<Job_Application__c> matches = [
             SELECT Id FROM Job_Application__c
             WHERE Source_Job_Key__c = :result.sourceJobKey
@@ -188,6 +142,68 @@ urls.add(result.canonicalUrl);
         }
         result.status = 'MANUAL';
         result.message = 'The posting could not be fetched. Enter the details manually.';
+    }
+
+    // Shared with intake staging so a posting gets the same key in both paths.
+    public static Set<String> identify(String postingUrl, Result result) {
+        String original = String.isBlank(postingUrl) ? '' : postingUrl.trim();
+        Matcher link = GREENHOUSE_JOB_URL.matcher(original);
+
+        Boolean isGreenhouse = link.matches();
+
+        Set<String> urls = new Set<String>{ original };
+
+        Matcher linkedInLink = LINKEDIN_JOB_URL.matcher(original);
+        Boolean isLinkedIn = linkedInLink.matches();
+
+        if (isLinkedIn) {
+            String jobId = linkedInLink.group(1);
+            String path = '/jobs/view/' + jobId;
+            result.sourceJobKey = 'linkedin:' + jobId;
+            result.canonicalUrl = 'https://www.linkedin.com' + path;
+            // Also match records saved with the short URL before LinkedIn support.
+            urls.add(result.canonicalUrl + '/');
+            urls.add('https://linkedin.com' + path);
+            urls.add('https://linkedin.com' + path + '/');
+        } else if (isGreenhouse) {
+            String board = link.group(1).toLowerCase();
+            String path = '/' + board + '/jobs/' + link.group(2);
+            result.sourceJobKey = 'greenhouse:' + board + ':' + link.group(2);
+            result.canonicalUrl = 'https://job-boards.greenhouse.io' + path;
+            urls.add('https://boards.greenhouse.io' + path);
+        } else {
+            Matcher webLink = Pattern.compile(
+                '(?i)^https://([a-z0-9.-]+\\.[a-z]{2,})(?::443)?([/?][^\\s#]*)?(?:#[^\\s]*)?$'
+            ).matcher(original);
+
+            if (!webLink.matches()) {
+                result.status = 'UNSUPPORTED';
+                result.message = 'Enter a complete HTTPS job posting link.';
+                return urls;
+            }
+
+            String pathAndQuery = webLink.group(2);
+            result.canonicalUrl = 'https://' + webLink.group(1).toLowerCase() +
+                (pathAndQuery == null ? '' : pathAndQuery);
+            result.sourceJobKey = 'url:' + EncodingUtil.convertToHex(
+                Crypto.generateDigest('SHA-256', Blob.valueOf(result.canonicalUrl))
+            );
+        }
+
+        Matcher leverLink = LEVER_JOB_URL.matcher(result.canonicalUrl);
+
+        Boolean isLever = leverLink.matches();
+
+        if (isLever) {
+            result.canonicalUrl = 'https://jobs.lever.co/' +
+                leverLink.group(1).toLowerCase() + '/' +
+                leverLink.group(2).toLowerCase();
+            result.sourceJobKey = 'url:' + EncodingUtil.convertToHex(
+                Crypto.generateDigest('SHA-256', Blob.valueOf(result.canonicalUrl))
+            );
+        }
+        urls.add(result.canonicalUrl);
+        return urls;
     }
 
     private static void readPosting(String html, Result result) {
