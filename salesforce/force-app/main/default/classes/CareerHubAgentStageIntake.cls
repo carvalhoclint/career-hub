@@ -57,10 +57,24 @@ public with sharing class CareerHubAgentStageIntake {
             if (isPosting) {
                 CareerHubJobPostingPreview.Result posting = new CareerHubJobPostingPreview.Result();
                 CareerHubJobPostingPreview.identify(draft.postingUrl, posting);
-                if (posting.status == 'UNSUPPORTED' || posting.sourceJobKey.length() > 80 ||
-                    posting.canonicalUrl.length() > 255) {
+                if (posting.status == 'UNSUPPORTED' || String.isBlank(posting.canonicalUrl) ||
+                    String.isBlank(posting.sourceJobKey)) {
+                    String suppliedUrl = draft.postingUrl.trim();
+                    String shape = suppliedUrl.toLowerCase().startsWith('https://') ? 'HTTPS'
+                        : (suppliedUrl.startsWith('[') ? 'wrapped link' : 'other');
                     result.outcome = 'INVALID';
-                    result.detail = 'Provide a complete HTTPS job posting link of at most 255 characters.';
+                    result.detail = 'The posting link could not be parsed (input type: ' + shape +
+                        ', length: ' + suppliedUrl.length() + '). Provide a complete HTTPS job posting link.';
+                    continue;
+                }
+                if (posting.canonicalUrl.length() > 255) {
+                    result.outcome = 'INVALID';
+                    result.detail = 'The normalized posting link exceeds the 255-character limit.';
+                    continue;
+                }
+                if (posting.sourceJobKey.length() > 80) {
+                    result.outcome = 'INVALID';
+                    result.detail = 'The posting source key exceeds the 80-character limit.';
                     continue;
                 }
                 key = posting.sourceJobKey;
