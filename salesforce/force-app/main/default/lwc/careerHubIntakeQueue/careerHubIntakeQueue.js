@@ -53,7 +53,7 @@ export default class CareerHubIntakeQueue extends LightningElement {
 
     get sourceNeedsCorrection() {
         const row = this.selectedRow;
-        return row && (!row.Applied_Date__c || row.Source_Stage__c !== 'Applied');
+        return row && !row.Posting_URL__c && (!row.Applied_Date__c || row.Source_Stage__c !== 'Applied');
     }
 
     async handleStaged() {

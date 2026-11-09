@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>CareerHubAgentStageIntake</members>
+        <members>CareerHubAgentStageIntakeTest</members>
+        <members>CareerHubAgentPreviewPosting</members>
+        <members>CareerHubApplicationIntake</members>
+        <members>CareerHubJobPostingPreview</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>Application_Intake__c.Posting_URL__c</members>
+        <members>Application_Intake__c.Recruiting_Contact_Name__c</members>
+        <members>Application_Intake__c.Recruiting_Email__c</members>
+        <members>Application_Intake__c.Recruiting_Phone__c</members>
+        <members>Job_Application__c.Recruiting_Contact_Name__c</members>
+        <members>Job_Application__c.Recruiting_Email__c</members>
+        <members>Job_Application__c.Recruiting_Phone__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>careerHubIntakeQueue</members>
+        <name>LightningComponentBundle</name>
+    </types>
+    <types>
+        <members>Career_Hub_Intake_Reviewer</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Application_Intake__c.Valid_Source_Record_Key</members>
+        <name>ValidationRule</name>
+    </types>
+    <types>
+        <members>Job_Application__c-Job Application Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>67.0</version>
+</Package>

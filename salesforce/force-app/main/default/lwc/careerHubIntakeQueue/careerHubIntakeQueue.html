@@ -72,8 +72,23 @@
                 <div class="slds-m-top_medium slds-box">
                     <h3 class="slds-text-heading_small">{selectedRow.Job_Title__c}</h3>
                     <p>{selectedRow.Employer_Name__c}</p>
-                    <p>Stage in source: {selectedRow.Source_Stage__c}</p>
-                    <p>Applied date: {selectedRow.Applied_Date__c}</p>
+                    <template lwc:if={selectedRow.Posting_URL__c}>
+                        <p>Posting: <lightning-formatted-url value={selectedRow.Posting_URL__c} target="_blank"></lightning-formatted-url></p>
+                        <p>This posting will be saved as Discovered.</p>
+                    </template>
+                    <template lwc:else>
+                        <p>Stage in source: {selectedRow.Source_Stage__c}</p>
+                        <p>Applied date: {selectedRow.Applied_Date__c}</p>
+                    </template>
+                    <template lwc:if={selectedRow.Recruiting_Contact_Name__c}>
+                        <p>Recruiting contact: {selectedRow.Recruiting_Contact_Name__c}</p>
+                    </template>
+                    <template lwc:if={selectedRow.Recruiting_Email__c}>
+                        <p>Recruiting email: {selectedRow.Recruiting_Email__c}</p>
+                    </template>
+                    <template lwc:if={selectedRow.Recruiting_Phone__c}>
+                        <p>Recruiting phone: {selectedRow.Recruiting_Phone__c}</p>
+                    </template>
                     <template lwc:if={sourceNeedsCorrection}>
                         <lightning-record-edit-form object-api-name={intakeObject} record-id={selectedId}
                             onsuccess={handleSourceSaved}>
