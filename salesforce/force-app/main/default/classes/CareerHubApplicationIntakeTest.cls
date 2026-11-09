@@ -211,4 +211,73 @@ private class CareerHubApplicationIntakeTest {
         }
     }
 
+    @IsTest
+    static void importsPostingWithNewEmployerButHoldsMismatchedSourceKey() {
+        System.runAs(reviewer()) {
+            String employerName = 'Career Hub Posting Test Employer';
+            String url = 'https://www.linkedin.com/jobs/view/89012345';
+            Application_Intake__c valid = new Application_Intake__c(
+                Source_Record_Key__c = 'linkedin:89012345',
+                Source_Stage__c = 'Unknown',
+                Employer_Name__c = employerName,
+                Job_Title__c = 'CRM Platform Analyst',
+                Posting_URL__c = url
+            );
+            Application_Intake__c mismatched = new Application_Intake__c(
+                Source_Record_Key__c = 'linkedin:89012346',
+                Source_Stage__c = 'Unknown',
+                Employer_Name__c = 'Career Hub Unverified Posting Employer',
+                Job_Title__c = 'CRM Platform Analyst',
+                Posting_URL__c = url
+            );
+            insert new List<Application_Intake__c>{ valid, mismatched };
+
+            Test.startTest();
+            System.assertEquals('Needs Review', CareerHubApplicationIntake.review(mismatched.Id, null));
+            System.assertEquals('Imported', CareerHubApplicationIntake.review(valid.Id, null));
+            Test.stopTest();
+
+            Application_Intake__c held = [
+                SELECT Review_Detail__c, Job_Application__c FROM Application_Intake__c WHERE Id = :mismatched.Id
+            ];
+            System.assert(held.Review_Detail__c.contains('posting link does not match'));
+            System.assertEquals(null, held.Job_Application__c);
+            System.assertEquals(0, [
+                SELECT COUNT() FROM Account WHERE Name = 'Career Hub Unverified Posting Employer'
+            ]);
+            Job_Application__c imported = [
+                SELECT Employer__r.Name, Stage__c, Applied_Date__c, Posting_URL__c, Job_Source__c
+                FROM Job_Application__c WHERE Source_Job_Key__c = 'linkedin:89012345'
+            ];
+            System.assertEquals(employerName, imported.Employer__r.Name);
+            System.assertEquals('Discovered', imported.Stage__c);
+            System.assertEquals(null, imported.Applied_Date__c);
+            System.assertEquals(url, imported.Posting_URL__c);
+            System.assertEquals('LinkedIn', imported.Job_Source__c);
+        }
+    }
+
+    @IsTest
+    static void holdsUnavailableOverrideWithoutCreatingReplacementAccount() {
+        System.runAs(reviewer()) {
+            Account removed = new Account(Name = 'Career Hub Removed Override');
+            insert as system removed;
+            delete as system removed;
+            String employerName = 'Career Hub Unresolved Override Employer';
+            Application_Intake__c item = stage('a000000000000007', employerName);
+
+            Test.startTest();
+            System.assertEquals('Needs Review', CareerHubApplicationIntake.review(item.Id, removed.Id));
+            Test.stopTest();
+
+            Application_Intake__c held = [
+                SELECT Review_Detail__c, Employer__c, Job_Application__c
+                FROM Application_Intake__c WHERE Id = :item.Id
+            ];
+            System.assert(held.Review_Detail__c.contains('selected employer Account is unavailable'));
+            System.assertEquals(null, held.Employer__c);
+            System.assertEquals(null, held.Job_Application__c);
+            System.assertEquals(0, [SELECT COUNT() FROM Account WHERE Name = :employerName]);
+        }
+    }
 }
