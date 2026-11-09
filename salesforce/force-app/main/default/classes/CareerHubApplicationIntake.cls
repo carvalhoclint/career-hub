@@ -17,6 +17,16 @@ public with sharing class CareerHubApplicationIntake {
     }
 
     @AuraEnabled
+    public static String getQueueJson(Boolean showCompleted) {
+        try {
+            return JSON.serialize(getQueue(showCompleted));
+        } catch (QueryException ex) {
+            // Use a primitive response for the queue, including when the user-mode query is denied.
+            return null;
+        }
+    }
+
+    @AuraEnabled
     public static String review(Id intakeId, Id employerId) {
         try {
             return reviewIntake(intakeId, employerId);

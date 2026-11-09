@@ -54,6 +54,11 @@ private class CareerHubApplicationIntakeTest {
         System.runAs(reviewer()) {
             insert as system new Account(Name = 'Career Hub Queue Clean');
             Application_Intake__c item = stage('a000000000000001', 'Career Hub Queue Clean');
+            List<Application_Intake__c> pending = (List<Application_Intake__c>) JSON.deserialize(
+                CareerHubApplicationIntake.getQueueJson(false), List<Application_Intake__c>.class
+            );
+            System.assertEquals(1, pending.size());
+            System.assertEquals(item.Id, pending[0].Id);
             Test.startTest();
             System.assertEquals('Imported', CareerHubApplicationIntake.review(item.Id, null));
             System.assertEquals('Imported', CareerHubApplicationIntake.review(item.Id, null));
@@ -69,6 +74,11 @@ private class CareerHubApplicationIntakeTest {
                 SELECT Job_Application__c FROM Application_Intake__c WHERE Id = :item.Id
             ];
             System.assertEquals(application.Id, saved.Job_Application__c);
+            List<Application_Intake__c> completed = (List<Application_Intake__c>) JSON.deserialize(
+                CareerHubApplicationIntake.getQueueJson(true), List<Application_Intake__c>.class
+            );
+            System.assertEquals(1, completed.size());
+            System.assertEquals(application.Id, completed[0].Job_Application__c);
 
             item.Id = null;
             item.Source_Record_Key__c = 'gmail:a000000000000001';

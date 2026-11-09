@@ -6,7 +6,7 @@ import EMPLOYER_NAME from '@salesforce/schema/Application_Intake__c.Employer_Nam
 import JOB_TITLE from '@salesforce/schema/Application_Intake__c.Job_Title__c';
 import SOURCE_STAGE from '@salesforce/schema/Application_Intake__c.Source_Stage__c';
 import APPLIED_DATE from '@salesforce/schema/Application_Intake__c.Applied_Date__c';
-import getQueue from '@salesforce/apex/CareerHubApplicationIntake.getQueue';
+import getQueueJson from '@salesforce/apex/CareerHubApplicationIntake.getQueueJson';
 import review from '@salesforce/apex/CareerHubApplicationIntake.review';
 
 export default class CareerHubIntakeQueue extends LightningElement {
@@ -104,24 +104,31 @@ export default class CareerHubIntakeQueue extends LightningElement {
         this.loadingQueue = true;
         this.queueError = undefined;
         try {
-            const data = await getQueue({ showCompleted: this.showCompleted });
+            const payload = await getQueueJson({ showCompleted: this.showCompleted });
             if (request !== this.queueRequest) return;
+            if (payload === null) {
+                this.rows = [];
+                this.queueError = 'Could not read the intake queue. Ask your admin to check your Application Intake Reviewer access.';
+                return;
+            }
+            const data = JSON.parse(payload);
             this.rows = data.map((row) => ({
                 ...row,
                 applicationUrl: row.Job_Application__c
                     ? '/lightning/r/Job_Application__c/' + row.Job_Application__c + '/view'
                     : null
             }));
-        } catch (error) {
+        } catch {
             if (request !== this.queueRequest) return;
             this.rows = [];
-            this.queueError = this.message(error, 'Could not load the intake queue. Try Refresh Queue again.');
+            this.queueError = 'Could not load the intake queue. Try Refresh Queue again.';
         } finally {
             if (request === this.queueRequest) this.loadingQueue = false;
         }
     }
 
-    message(error, fallback = 'An unexpected error occurred.') {
+    message(error) {
+        const fallback = 'An unexpected error occurred.';
         try {
             return error?.body?.message || error?.message || fallback;
         } catch {
