@@ -1,0 +1,99 @@
+<template>
+    <lightning-card title="Application Intake Queue" icon-name="standard:task">
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <h2 class="slds-text-heading_small">Stage an application confirmation</h2>
+            <p class="slds-m-bottom_small">Enter extracted details and a stable source key. For Gmail, use gmail: followed by the message ID.</p>
+            <lightning-record-edit-form object-api-name={intakeObject} onsuccess={handleStaged} data-stage-form="true">
+                <lightning-messages></lightning-messages>
+                <lightning-input-field field-name={sourceRecordKey}></lightning-input-field>
+                <lightning-input-field field-name={employerName}></lightning-input-field>
+                <lightning-input-field field-name={jobTitle}></lightning-input-field>
+                <lightning-input-field field-name={sourceStage}></lightning-input-field>
+                <lightning-input-field field-name={appliedDate}></lightning-input-field>
+                <lightning-button type="submit" label="Stage Confirmation" variant="brand"></lightning-button>
+            </lightning-record-edit-form>
+        </div>
+
+        <div class="slds-p-around_medium slds-border_top">
+            <h2 class="slds-text-heading_small">Review queue</h2>
+            <lightning-input type="toggle" label="Show completed items" checked={showCompleted}
+                onchange={handleToggle} disabled={busy}></lightning-input>
+            <lightning-button class="slds-m-top_small" label="Refresh Queue" onclick={refreshQueue}
+                disabled={busy}></lightning-button>
+            <template lwc:if={queueError}>
+                <p class="slds-text-color_error slds-m-vertical_small" role="alert">{queueError}</p>
+            </template>
+            <template lwc:elseif={hasRows}>
+                <p class="slds-m-vertical_small">Showing up to 100 items in this view.</p>
+                <div class="slds-scrollable_x">
+                    <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+                        <caption class="slds-assistive-text">Application confirmations</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Intake</th>
+                                <th scope="col">Employer</th>
+                                <th scope="col">Job Title</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Review Detail</th>
+                                <th scope="col">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={rows} for:item="row">
+                                <tr key={row.Id}>
+                                    <th scope="row">{row.Name}</th>
+                                    <td>{row.Employer_Name__c}</td>
+                                    <td>{row.Job_Title__c}</td>
+                                    <td>{row.Status__c}</td>
+                                    <td>{row.Review_Detail__c}</td>
+                                    <td>
+                                        <template lwc:if={row.applicationUrl}>
+                                            <a href={row.applicationUrl}>Open Application</a>
+                                        </template>
+                                        <template lwc:elseif={showCompleted}>
+                                            <span>No application link</span>
+                                        </template>
+                                        <template lwc:else>
+                                            <lightning-button label="Review" data-id={row.Id} onclick={handleSelect}
+                                                disabled={busy}></lightning-button>
+                                        </template>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
+            <template lwc:else>
+                <p class="slds-m-vertical_small">There are no intake records in this view.</p>
+            </template>
+
+            <template lwc:if={selectedRow}>
+                <div class="slds-m-top_medium slds-box">
+                    <h3 class="slds-text-heading_small">{selectedRow.Job_Title__c}</h3>
+                    <p>{selectedRow.Employer_Name__c}</p>
+                    <p>Stage in source: {selectedRow.Source_Stage__c}</p>
+                    <p>Applied date: {selectedRow.Applied_Date__c}</p>
+                    <template lwc:if={sourceNeedsCorrection}>
+                        <lightning-record-edit-form object-api-name={intakeObject} record-id={selectedId}
+                            onsuccess={handleSourceSaved}>
+                            <p class="slds-m-top_small">Only correct these details if you can verify them from the source.</p>
+                            <lightning-messages></lightning-messages>
+                            <lightning-input-field field-name={sourceStage}></lightning-input-field>
+                            <lightning-input-field field-name={appliedDate}></lightning-input-field>
+                            <lightning-button type="submit" label="Save Source Details" disabled={busy}></lightning-button>
+                        </lightning-record-edit-form>
+                    </template>
+                    <p class="slds-m-vertical_small">Leave the override blank to match an employer by name.</p>
+                    <lightning-record-picker label="Employer Account override" object-api-name="Account"
+                        value={employerId} onchange={handleEmployer} disabled={busy}></lightning-record-picker>
+                    <lightning-button class="slds-m-top_small" label="Check and Import" variant="brand"
+                        onclick={handleReview} disabled={busy}></lightning-button>
+                    <template lwc:if={actionError}>
+                        <p class="slds-text-color_error slds-m-top_small" role="alert">{actionError}</p>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+</template>
