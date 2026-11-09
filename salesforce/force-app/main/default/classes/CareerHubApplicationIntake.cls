@@ -86,9 +86,9 @@ public with sharing class CareerHubApplicationIntake {
                 null, null);
         }
 
+        String employerName = item.Employer_Name__c.trim();
         List<Account> accounts;
         if (employerId == null) {
-            String employerName = item.Employer_Name__c.trim();
             accounts = [
                 SELECT Id FROM Account
                 WHERE Name = :employerName
@@ -104,14 +104,42 @@ public with sharing class CareerHubApplicationIntake {
                 FOR UPDATE
             ];
         }
-        if (accounts.size() != 1) {
-            String detail = accounts.isEmpty()
-                ? 'No accessible employer Account matched. Select the correct Account and review again.'
-                : 'More than one employer Account matched. Select the correct Account and review again.';
-            return finish(item.Id, 'Needs Review', detail, null, null);
+        if (accounts.size() > 1) {
+            return finish(item.Id, 'Needs Review',
+                'More than one employer Account matched. Select the correct Account and review again.', null, null);
         }
 
-        Id resolvedEmployer = accounts[0].Id;
+        Id resolvedEmployer;
+        if (!accounts.isEmpty()) {
+            resolvedEmployer = accounts[0].Id;
+        } else if (employerId != null) {
+            return finish(item.Id, 'Needs Review',
+                'The selected employer Account is unavailable. Select an accessible Account and review again.', null, null);
+        } else {
+            EmployerAccountExistence existence = new EmployerAccountExistence();
+            if (existence.exists(employerName)) {
+                return finish(item.Id, 'Needs Review',
+                    'An employer Account could not be matched safely. Select the correct Account or ask your admin for help.',
+                    null, null);
+            }
+            if (!Schema.sObjectType.Account.isCreateable() || !Schema.sObjectType.Account.fields.Name.isCreateable()) {
+                return finish(item.Id, 'Needs Review',
+                    'No employer Account matched and you do not have permission to create one. Ask your admin for help.',
+                    null, null);
+            }
+            Account employer = new Account(Name = employerName);
+            try {
+                insert as user employer;
+            } catch (DmlException ex) {
+                if (ex.getDmlType(0) == StatusCode.DUPLICATES_DETECTED || ex.getDmlType(0) == StatusCode.DUPLICATE_VALUE) {
+                    return finish(item.Id, 'Needs Review',
+                        'Salesforce found a possible duplicate employer Account. Select the correct Account and review again.',
+                        null, null);
+                }
+                throw ex;
+            }
+            resolvedEmployer = employer.Id;
+        }
         String title = item.Job_Title__c.trim();
         if (!isPosting) {
             List<Job_Application__c> byRole = [
@@ -154,6 +182,16 @@ public with sharing class CareerHubApplicationIntake {
         insert as user application;
         return finish(item.Id, 'Imported', isPosting ? 'Saved the reviewed job posting as Discovered.' : 'Created a job application from the reviewed confirmation.',
             resolvedEmployer, application.Id);
+    }
+
+    // A hidden exact match can block creation, but its ID is never used or returned.
+    private without sharing class EmployerAccountExistence {
+        public Boolean exists(String employerName) {
+            List<Account> matches = [
+                SELECT Id FROM Account WHERE Name = :employerName WITH SYSTEM_MODE LIMIT 1
+            ];
+            return !matches.isEmpty();
+        }
     }
 
     private static Id findRecruiter(Id employerId, String email) {

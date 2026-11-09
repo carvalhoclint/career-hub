@@ -102,7 +102,7 @@
                             <lightning-button type="submit" label="Save Source Details" disabled={busy}></lightning-button>
                         </lightning-record-edit-form>
                     </template>
-                    <p class="slds-m-vertical_small">Leave the override blank to match an employer by name.</p>
+                    <p class="slds-m-vertical_small">Select an existing Account, or leave the override blank to match by name and create an Account if none exists.</p>
                     <lightning-record-picker label="Employer Account override" object-api-name="Account"
                         value={employerId} onchange={handleEmployer} disabled={busy}></lightning-record-picker>
                     <lightning-button class="slds-m-top_small" label="Check and Import" variant="brand"

@@ -142,24 +142,33 @@ private class CareerHubApplicationIntakeTest {
     }
 
     @IsTest
-    static void filtersOpenAndCompletedAndHoldsMissingEmployer() {
+    static void createsMissingEmployerAndReusesExistingEmployer() {
         System.runAs(reviewer()) {
             Account employer = new Account(Name = 'Career Hub Queue Available');
             insert as system employer;
-            Application_Intake__c missing = stage('a000000000000005', 'Career Hub Queue Not Found');
+            String newEmployerName = 'Career Hub Queue New Employer';
+            Application_Intake__c missing = stage('a000000000000005', newEmployerName);
             Application_Intake__c available = stage('a000000000000006', employer.Name);
             Test.startTest();
             System.assertEquals(2, CareerHubApplicationIntake.getQueue(false).size());
-            System.assertEquals('Needs Review', CareerHubApplicationIntake.review(missing.Id, null));
+            System.assertEquals('Imported', CareerHubApplicationIntake.review(missing.Id, null));
+            System.assertEquals('Imported', CareerHubApplicationIntake.review(missing.Id, null));
             System.assertEquals('Imported', CareerHubApplicationIntake.review(available.Id, null));
-            List<Application_Intake__c> openItems = CareerHubApplicationIntake.getQueue(false);
-            List<Application_Intake__c> completed = CareerHubApplicationIntake.getQueue(true);
+            System.assertEquals(0, CareerHubApplicationIntake.getQueue(false).size());
+            System.assertEquals(2, CareerHubApplicationIntake.getQueue(true).size());
             Test.stopTest();
 
-            System.assertEquals(1, openItems.size());
-            System.assertEquals(missing.Id, openItems[0].Id);
-            System.assertEquals(1, completed.size());
-            System.assertEquals(available.Id, completed[0].Id);
+            List<Account> created = [SELECT Id FROM Account WHERE Name = :newEmployerName];
+            System.assertEquals(1, created.size());
+            System.assertEquals(1, [SELECT COUNT() FROM Account WHERE Name = :employer.Name]);
+            Map<String, Id> employersByKey = new Map<String, Id>();
+            for (Job_Application__c application : [
+                SELECT Source_Job_Key__c, Employer__c FROM Job_Application__c
+            ]) {
+                employersByKey.put(application.Source_Job_Key__c, application.Employer__c);
+            }
+            System.assertEquals(created[0].Id, employersByKey.get('gmail:a000000000000005'));
+            System.assertEquals(employer.Id, employersByKey.get('gmail:a000000000000006'));
         }
     }
 
