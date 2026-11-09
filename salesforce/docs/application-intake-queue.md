@@ -27,14 +27,23 @@ sf project deploy start --dry-run --target-org career-hub-dev \
 
 After validation, rerun without `--dry-run` to deploy. Assign the **Career Hub Intake Reviewer** permission set to the intended reviewer, then open **Application Intake Queue** from Career Hub.
 
-Use synthetic values, select **Applied** as the source stage, and choose a past Applied Date:
+### Manual acceptance test cases
 
-| Case | Input | Expected result |
+**Prerequisites:** Deploy to `career-hub-dev`, assign **Career Hub Intake Reviewer**, then open **Career Hub → Application Intake Queue**. Create a synthetic Account named **CH UAT Pipeline Co**. Use a fresh set of synthetic keys and titles on subsequent runs. Enter **September 1, 2026** for any case that calls for a known past date. Leave **Employer Account override** blank unless specified. No Gmail or Google Sheets connection is needed.
+
+To stage a row, enter **Source Record Key**, **Employer Name from Email**, **Job Title**, **Stage in Source**, and **Applied Date**, then click **Stage Confirmation**. A new item starts in the open queue. To process it, click **Review → Check and Import**. Turn on **Show completed items** to see **Imported** and **Duplicate** records and open the linked Job Application.
+
+| ID | Scenario and steps | Expected result |
 | --- | --- | --- |
-| Clean | Create Account **Demo Pipeline Co**. Stage source key **gmail:a100000000000001**, that employer, and role **Revenue Systems Analyst**. Click **Review**, then **Check and Import**. | The completed view shows one **Imported** intake with a working application link. |
-| Replay | Stage the same Gmail source key again. Then use **gmail:a100000000000002** with the original employer and title and review it. | The repeated ID cannot be staged. The second message links to the existing application with **Duplicate** status. |
-| Ambiguous employer | Create two Accounts named **Demo Shared Employer**, if org duplicate rules allow it. Stage **gmail:a100000000000003** with that name and role **GTM Systems Analyst**. | The intake stays in **Needs Review** without creating an application. Select the intended Account and retry; one record is created. |
-| Missing employer | Stage **gmail:a100000000000004** against a name with no matching Account. | The intake stays in **Needs Review** until an Account is selected. |
+| UAT-01 | Stage `gmail:b200000000000001`, **CH UAT Pipeline Co**, **CH UAT Revenue Systems Analyst**, **Applied**, and the known date. Review it. | The intake appears as **Imported** in completed items. **Open Application** opens a single Job Application with that title, employer, date, and **Applied** stage. Save its record ID for UAT-03. |
+| UAT-02 | Try to stage the exact same source key from UAT-01 again. | Salesforce shows a duplicate-value error. No second intake or application is created. |
+| UAT-03 | Stage `gmail:b200000000000002` with the same employer, job title, stage, and date as UAT-01. Review it. | The intake is **Duplicate**. **Open Application** opens the same record ID from UAT-01. The existing application is unchanged and there is still only one application for that employer and title. |
+| UAT-04 | Stage `sheet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`, **CH UAT Pipeline Co**, **CH UAT Spreadsheet Analyst**, **Applied**, and leave **Applied Date** blank. Review it. After checking the result, enter the known date under **Save Source Details**, save, and review again. | The first attempt stays **Needs Review** in the open queue and creates no application. After the date is saved and the item is reviewed again, it becomes **Imported** and links to one application with the supplied date. |
+| UAT-05 | Stage `sheet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`, **CH UAT Pipeline Co**, **CH UAT Historical Analyst**, **Later Stage**, and the known date. Review it. | The intake stays **Needs Review** and creates no Job Application. A historical row is never automatically reset to **Applied**. |
+| UAT-06 | Create two Accounts named **CH UAT Shared Employer** if the org allows duplicate Account names. Stage `gmail:b200000000000003` for that employer, **CH UAT GTM Systems Analyst**, **Applied**, and the known date. Review once with no override. Then select the intended Account and review again. | The first review stays **Needs Review** with an explanation about multiple matches and creates no application. The second review creates one application linked to the specific Account you selected. If Account duplicate rules prevent setup, mark this case **Blocked** and run UAT-07. |
+| UAT-07 | Stage `gmail:b200000000000004`, employer **CH UAT No Matching Employer** (do not create that Account), **CH UAT Business Systems Analyst**, **Applied**, and the known date. Review with no override. Then select **CH UAT Pipeline Co** and review again. | The first review stays **Needs Review** without creating an application. The second review imports one application under **CH UAT Pipeline Co**. |
+
+Record **Pass**, **Fail**, or **Blocked** for each case, with the intake number and the linked application ID when applicable. UAT-04 and UAT-05 reproduce spreadsheet data quality issues using synthetic values. The placeholder spreadsheet keys above exercise the input format; use real stable digests for actual spreadsheet ingestion.
 
 The queue is a manual intake MVP; it does not connect to Gmail or Google Sheets. A future ingestion integration can stage the same intake fields through Salesforce without changing the review and approval logic.
 
