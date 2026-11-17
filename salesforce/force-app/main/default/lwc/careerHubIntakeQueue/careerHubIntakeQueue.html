@@ -25,44 +25,57 @@
             </template>
             <template lwc:elseif={hasRows}>
                 <p class="slds-m-vertical_small">Showing up to 100 items in this view.</p>
-                <div class="slds-scrollable_x">
-                    <table class="slds-table slds-table_cell-buffer slds-table_bordered">
-                        <caption class="slds-assistive-text">Application confirmations</caption>
-                        <thead>
-                            <tr>
-                                <th scope="col">Intake</th>
-                                <th scope="col">Employer</th>
-                                <th scope="col">Job Title</th>
-                                <th scope="col">Status</th>
-                                <th scope="col">Review Detail</th>
-                                <th scope="col">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template for:each={rows} for:item="row">
-                                <tr key={row.Id}>
-                                    <th scope="row">{row.Name}</th>
-                                    <td>{row.Employer_Name__c}</td>
-                                    <td>{row.Job_Title__c}</td>
-                                    <td>{row.Status__c}</td>
-                                    <td>{row.Review_Detail__c}</td>
-                                    <td>
-                                        <template lwc:if={row.applicationUrl}>
-                                            <a href={row.applicationUrl}>Open Application</a>
-                                        </template>
-                                        <template lwc:elseif={showCompleted}>
-                                            <span>No application link</span>
-                                        </template>
-                                        <template lwc:else>
-                                            <lightning-button label="Review" data-id={row.Id} onclick={handleSelect}
-                                                disabled={busy}></lightning-button>
-                                        </template>
-                                    </td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
-                </div>
+                <lightning-input type="search" label="Filter by employer, job title, or status"
+                    value={search} onchange={handleSearch} disabled={busy}></lightning-input>
+                <template lwc:if={hasVisibleRows}>
+                    <template lwc:if={useDatatable}>
+                        <lightning-datatable key-field="Id" data={visibleRows} columns={columns}
+                            hide-checkbox-column onrowaction={handleRowAction}></lightning-datatable>
+                    </template>
+                    <template lwc:else>
+                        <div class="slds-scrollable_x">
+                            <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+                                <caption class="slds-assistive-text">Application confirmations</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Intake</th>
+                                        <th scope="col">Employer</th>
+                                        <th scope="col">Job Title</th>
+                                        <th scope="col">Status</th>
+                                        <th scope="col">Review Detail</th>
+                                        <th scope="col">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template for:each={visibleRows} for:item="row">
+                                        <tr key={row.Id}>
+                                            <th scope="row">{row.Name}</th>
+                                            <td>{row.Employer_Name__c}</td>
+                                            <td>{row.Job_Title__c}</td>
+                                            <td>{row.Status__c}</td>
+                                            <td>{row.Review_Detail__c}</td>
+                                            <td>
+                                                <template lwc:if={row.applicationUrl}>
+                                                    <a href={row.applicationUrl}>Open Application</a>
+                                                </template>
+                                                <template lwc:elseif={showCompleted}>
+                                                    <span>No application link</span>
+                                                </template>
+                                                <template lwc:else>
+                                                    <lightning-button label="Review" data-id={row.Id} onclick={handleSelect}
+                                                        disabled={busy}></lightning-button>
+                                                </template>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </template>
+                </template>
+                <template lwc:else>
+                    <p class="slds-m-vertical_small" role="status">No loaded items match your search.</p>
+                </template>
             </template>
             <template lwc:else>
                 <p class="slds-m-vertical_small">There are no intake records in this view.</p>
