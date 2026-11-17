@@ -1,4 +1,6 @@
 import { LightningElement, wire } from 'lwc';
+import { NavigationMixin } from 'lightning/navigation';
+import FORM_FACTOR from '@salesforce/client/formFactor';
 import { refreshApex } from '@salesforce/apex';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import APPLICATION_INTAKE from '@salesforce/schema/Application_Intake__c';
@@ -10,7 +12,18 @@ import APPLIED_DATE from '@salesforce/schema/Application_Intake__c.Applied_Date_
 import getQueue from '@salesforce/apex/CareerHubApplicationIntake.getQueue';
 import review from '@salesforce/apex/CareerHubApplicationIntake.review';
 
-export default class CareerHubIntakeQueue extends LightningElement {
+const COLUMNS = [
+    { label: 'Employer', fieldName: 'Employer_Name__c' },
+    { label: 'Job Title', fieldName: 'Job_Title__c', wrapText: true },
+    { label: 'Status', fieldName: 'Status__c' },
+    { label: 'Review Detail', fieldName: 'Review_Detail__c', wrapText: true },
+    { type: 'action', typeAttributes: { rowActions: (row, done) => {
+        done([{ label: row.applicationUrl ? 'Open Application' : 'Review', name: 'open',
+            disabled: !row.applicationUrl && row.completedView }]);
+    } } }
+];
+
+export default class CareerHubIntakeQueue extends NavigationMixin(LightningElement) {
     intakeObject = APPLICATION_INTAKE;
     sourceRecordKey = SOURCE_RECORD_KEY;
     employerName = EMPLOYER_NAME;
@@ -19,6 +32,9 @@ export default class CareerHubIntakeQueue extends LightningElement {
     sourceStage = SOURCE_STAGE;
     showCompleted = false;
     rows = [];
+    search = '';
+    columns = COLUMNS;
+    useDatatable = FORM_FACTOR === 'Large';
     queueError;
     actionError;
     queueWire;
@@ -32,6 +48,7 @@ export default class CareerHubIntakeQueue extends LightningElement {
         if (result.data) {
             this.rows = result.data.map((row) => ({
                 ...row,
+                completedView: this.showCompleted,
                 applicationUrl: row.Job_Application__c
                     ? '/lightning/r/Job_Application__c/' + row.Job_Application__c + '/view'
                     : null
@@ -45,6 +62,39 @@ export default class CareerHubIntakeQueue extends LightningElement {
 
     get hasRows() {
         return this.rows.length > 0;
+    }
+
+    get visibleRows() {
+        const terms = this.search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        return this.rows.filter((row) => {
+            const searchable = [row.Employer_Name__c, row.Job_Title__c, row.Status__c]
+                .filter(Boolean).join(' ').toLowerCase();
+            return terms.every((term) => searchable.includes(term));
+        });
+    }
+
+    get hasVisibleRows() {
+        return this.visibleRows.length > 0;
+    }
+
+    handleSearch(event) {
+        this.search = event.target.value || '';
+        if (!this.visibleRows.some((row) => row.Id === this.selectedId)) {
+            this.selectRow(undefined);
+        }
+    }
+
+    handleRowAction(event) {
+        const row = this.visibleRows.find((item) => item.Id === event.detail.row.Id);
+        if (!row || this.busy || event.detail.action.name !== 'open') return;
+        if (row.applicationUrl) {
+            this[NavigationMixin.Navigate]({
+                type: 'standard__recordPage',
+                attributes: { recordId: row.Job_Application__c, actionName: 'view' }
+            });
+        } else if (!this.showCompleted) {
+            this.selectRow(row.Id);
+        }
     }
 
     get selectedRow() {
@@ -78,7 +128,11 @@ export default class CareerHubIntakeQueue extends LightningElement {
     }
 
     handleSelect(event) {
-        this.selectedId = event.currentTarget.dataset.id;
+        this.selectRow(event.currentTarget.dataset.id);
+    }
+
+    selectRow(id) {
+        this.selectedId = id;
         this.employerId = undefined;
         this.actionError = undefined;
     }
