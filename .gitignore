@@ -1,0 +1,42 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Salesforce authentication and cache
+.sf/
+.sfdx/
+
+# Google and Gmail credentials
+credentials.json
+client_secret*.json
+service-account*.json
+service_account*.json
+token.json
+tokens.json
+oauth_token*.json
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Private data exports
+private-data/
+exports/
+backups/
+*.csv
+
+# Security scan reports
+*gitleaks-report*
+*security-report.json
+
+# Dependencies and logs
+node_modules/
+__pycache__/
+.venv/
+*.log
+
+# Operating system files
+.DS_Store
